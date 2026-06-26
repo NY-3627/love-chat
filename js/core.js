@@ -157,6 +157,8 @@ function loadMoreHistory() {
                 musicPlayerEnabled: false,
                 replyDelayMin: 3000,
                 replyDelayMax: 7000,
+                questionnaireDelayMin: 1000,
+                questionnaireDelayMax: 3000,
                 inChatAvatarEnabled: true,
                 inChatAvatarSize: 36,
                 inChatAvatarPosition: 'center',

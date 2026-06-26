@@ -1047,6 +1047,51 @@ if (_chatSettingsEl) _chatSettingsEl.addEventListener('click', () => {
             });
             maxDelaySlider.addEventListener('change', throttledSaveData);
 
+            const qMinDelaySlider = document.getElementById('questionnaire-delay-min-slider');
+            const qMinDelayValue = document.getElementById('questionnaire-delay-min-value');
+            const qMaxDelaySlider = document.getElementById('questionnaire-delay-max-slider');
+            const qMaxDelayValue = document.getElementById('questionnaire-delay-max-value');
+
+            function updateQDelayUI() {
+                if (qMinDelaySlider) qMinDelaySlider.value = settings.questionnaireDelayMin;
+                if (qMinDelayValue) {
+                    const minSec = settings.questionnaireDelayMin / 1000;
+                    qMinDelayValue.textContent = minSec >= 60 ? `${(minSec/60).toFixed(1)}分钟` : `${minSec.toFixed(0)}s`;
+                }
+                if (qMaxDelaySlider) qMaxDelaySlider.value = settings.questionnaireDelayMax;
+                if (qMaxDelayValue) {
+                    const maxSec = settings.questionnaireDelayMax / 1000;
+                    qMaxDelayValue.textContent = maxSec >= 60 ? `${(maxSec/60).toFixed(1)}分钟` : `${maxSec.toFixed(0)}s`;
+                }
+            }
+            updateQDelayUI();
+
+            if (qMinDelaySlider) {
+                qMinDelaySlider.addEventListener('input', (e) => {
+                    let val = parseInt(e.target.value, 10);
+                    if (val > settings.questionnaireDelayMax) {
+                        val = settings.questionnaireDelayMax;
+                        e.target.value = val;
+                    }
+                    settings.questionnaireDelayMin = val;
+                    updateQDelayUI();
+                });
+                qMinDelaySlider.addEventListener('change', throttledSaveData);
+            }
+
+            if (qMaxDelaySlider) {
+                qMaxDelaySlider.addEventListener('input', (e) => {
+                    let val = parseInt(e.target.value, 10);
+                    if (val < settings.questionnaireDelayMin) {
+                        val = settings.questionnaireDelayMin;
+                        e.target.value = val;
+                    }
+                    settings.questionnaireDelayMax = val;
+                    updateQDelayUI();
+                });
+                qMaxDelaySlider.addEventListener('change', throttledSaveData);
+            }
+
             const settingToggles = {
                 '#reply-toggle': {
                     prop: 'replyEnabled', name: '引用回复'
@@ -1358,6 +1403,15 @@ if (_cancelEnvEl) _cancelEnvEl.addEventListener('click', () => {
                 });
             }
 
+            const questionnaireEntryBtn = document.getElementById('questionnaire-function');
+            if (questionnaireEntryBtn) {
+                questionnaireEntryBtn.addEventListener('click', async () => {
+                    hideModal(DOMElements.advancedModal.modal);
+                    await loadQuestionnaireData();
+                    renderQuestionnaireList();
+                    showModal(document.getElementById('questionnaire-modal'));
+                });
+            }
 
             const _batchFavEl = document.getElementById('batch-favorite-function');
             if (_batchFavEl) _batchFavEl.addEventListener('click', () => {
@@ -1533,11 +1587,6 @@ if (sessionId === currentSessionId) {
 
         const initMusicPlayer = async () => {
     const latestSystemSongs = [
-  {
-    "title": "ANSWER",
-    "sub": "들리니 I'm callin' you",
-    "url": "https://files.catbox.moe/hzpr94.mp3"
-  },
   {
     "title": "All I Have Is Love",
     "sub": "Feel the beating of my heart",
@@ -2411,6 +2460,27 @@ const savedCover = safeGetItem(APP_PREFIX + 'playerCover');
         if (song.url) audio.src = song.url;
         updatePlaylistHighlight();
     }
+
+    audio.addEventListener('error', () => {
+        if (songs.length <= 1) return;
+        const failedIndex = currentIndex;
+        console.warn(`歌曲加载失败，自动跳过: ${songs[failedIndex]?.title || '未知'}`);
+        setTimeout(() => {
+            if (playMode === 'shuffle') {
+                let newIndex;
+                do {
+                    newIndex = Math.floor(Math.random() * songs.length);
+                } while (newIndex === failedIndex && songs.length > 1);
+                currentIndex = newIndex;
+            } else {
+                currentIndex = (currentIndex + 1) % songs.length;
+            }
+            loadSong(currentIndex);
+            if (isPlaying) {
+                audio.play().catch(e => console.warn('自动播放下一首失败', e));
+            }
+        }, 500);
+    });
 
     function togglePlay() {
         if (songs.length === 0) {

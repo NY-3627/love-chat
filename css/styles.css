@@ -44,6 +44,10 @@
             --message-font-weight: 400;
             --message-line-height: 1.5;
             --in-chat-avatar-size: 36px;
+            --questionnaire-user-choice: var(--accent-color);
+            --questionnaire-user-choice-rgb: var(--accent-color-rgb);
+            --questionnaire-partner-choice: #ff6b6b;
+            --questionnaire-partner-choice-rgb: 255, 107, 107;
             /* ---- UX enhancements ---- */
             --focus-ring-width: 3px;
             --focus-ring-color: rgba(var(--accent-color-rgb,197,164,126), 0.38);

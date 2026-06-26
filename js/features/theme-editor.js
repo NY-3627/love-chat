@@ -115,6 +115,8 @@ function applyAvatarShapeToDOM(type, shape) {
             '--send-btn-icon-color':'发送按钮 图标色',
             '--favorite-color':    '收藏星标颜色',
             '--timestamp-color':   '时间戳颜色',
+            '--questionnaire-user-choice': '【互动问答】你的选择颜色',
+            '--questionnaire-partner-choice': '【互动问答】对方选择颜色',
         };
 
         const themeExtraMappings = {
@@ -187,6 +189,20 @@ function initThemeEditor() {
                 const hex = customColors['--accent-color'].replace('#','');
                 if (/^[0-9a-fA-F]{6}$/.test(hex)) {
                     customColors['--accent-color-rgb'] =
+                        `${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)}`;
+                }
+            }
+            if (customColors['--questionnaire-user-choice']) {
+                const hex = customColors['--questionnaire-user-choice'].replace('#','');
+                if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                    customColors['--questionnaire-user-choice-rgb'] =
+                        `${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)}`;
+                }
+            }
+            if (customColors['--questionnaire-partner-choice']) {
+                const hex = customColors['--questionnaire-partner-choice'].replace('#','');
+                if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+                    customColors['--questionnaire-partner-choice-rgb'] =
                         `${parseInt(hex.slice(0,2),16)},${parseInt(hex.slice(2,4),16)},${parseInt(hex.slice(4,6),16)}`;
                 }
             }
@@ -305,6 +321,7 @@ function initThemeEditor() {
                 { label: '💬 对方气泡',  vars: ['--message-received-bg','--message-received-text'] },
                 { label: '🔧 工具栏按钮', vars: ['--toolbar-btn-bg','--toolbar-btn-color'] },
                 { label: '📤 发送按钮',  vars: ['--send-btn-bg','--send-btn-icon-color'] },
+                { label: '📝 互动问答',  vars: ['--questionnaire-user-choice','--questionnaire-partner-choice'] },
                 { label: '⭐ 其他',       vars: ['--favorite-color'] },
             ];
 
@@ -345,6 +362,16 @@ function initThemeEditor() {
                         if (v === '--accent-color') {
                             const h = val.replace('#','');
                             document.documentElement.style.setProperty('--accent-color-rgb',
+                                `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`);
+                        }
+                        if (v === '--questionnaire-user-choice') {
+                            const h = val.replace('#','');
+                            document.documentElement.style.setProperty('--questionnaire-user-choice-rgb',
+                                `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`);
+                        }
+                        if (v === '--questionnaire-partner-choice') {
+                            const h = val.replace('#','');
+                            document.documentElement.style.setProperty('--questionnaire-partner-choice-rgb',
                                 `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`);
                         }
                     });
