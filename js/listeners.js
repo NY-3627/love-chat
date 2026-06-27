@@ -1,23 +1,21 @@
 function setupEventListeners() {
-    try {
-        initCoreListeners();
-        initModalListeners();
-        initChatActionListeners();
-        initHeaderAndSettingsListeners();
-        initDataManagementListeners();
-        initNewFeatureListeners();
-        setupTutorialListeners();
-        initMoodListeners();
-        initDecisionModule(); 
-        initAnniversaryModule(); 
-        initThemeEditor(); 
-        initThemeSchemes();
-        
-        initComboMenu(); 
-        
-    } catch (e) {
-        console.error("事件绑定过程中发生错误:", e);
-    }
+    const safeInit = (name, fn) => {
+        try { fn(); }
+        catch (e) { console.error(`[${name}] 初始化失败:`, e); }
+    };
+    safeInit('core', initCoreListeners);
+    safeInit('modal', initModalListeners);
+    safeInit('chat-action', initChatActionListeners);
+    safeInit('header-settings', initHeaderAndSettingsListeners);
+    safeInit('data-mgmt', initDataManagementListeners);
+    safeInit('new-feature', initNewFeatureListeners);
+    safeInit('tutorial', setupTutorialListeners);
+    safeInit('mood', initMoodListeners);
+    safeInit('decision', initDecisionModule);
+    safeInit('anniversary', initAnniversaryModule);
+    safeInit('theme-editor', initThemeEditor);
+    safeInit('theme-schemes', initThemeSchemes);
+    safeInit('combo-menu', initComboMenu);
 }
 
 function initChatActionListeners() {
@@ -1423,7 +1421,7 @@ if (_cancelEnvEl) _cancelEnvEl.addEventListener('click', () => {
 
 
             
-            DOMElements.anniversaryAnimation.closeBtn.addEventListener('click', () => {
+            DOMElements.anniversaryAnimation && DOMElements.anniversaryAnimation.closeBtn && DOMElements.anniversaryAnimation.closeBtn.addEventListener('click', () => {
                 DOMElements.anniversaryAnimation.modal.classList.remove('active');
             });
 
@@ -1443,23 +1441,25 @@ if (_cancelEnvEl) _cancelEnvEl.addEventListener('click', () => {
                 });
             }
             const musicToggle = document.getElementById('music-player-toggle');
-            musicToggle.addEventListener('click', () => {
-                settings.musicPlayerEnabled = !settings.musicPlayerEnabled;
-                throttledSaveData();
+            if (musicToggle) {
+                musicToggle.addEventListener('click', () => {
+                    settings.musicPlayerEnabled = !settings.musicPlayerEnabled;
+                    throttledSaveData();
 
-                const player = document.getElementById('player');
-                if (settings.musicPlayerEnabled) {
-                    player.classList.add('visible');
-                    showNotification('音乐播放器已开启', 'success');
-                } else {
-                    player.classList.remove('visible');
-                    document.getElementById('playlist').classList.remove('active');
-                    const audio = document.getElementById('audio');
-                    if (audio) audio.pause();
-                    showNotification('音乐播放器已关闭', 'info');
-                }
-                hideModal(DOMElements.advancedModal.modal);
-            });
+                    const player = document.getElementById('player');
+                    if (settings.musicPlayerEnabled) {
+                        player.classList.add('visible');
+                        showNotification('音乐播放器已开启', 'success');
+                    } else {
+                        player.classList.remove('visible');
+                        document.getElementById('playlist').classList.remove('active');
+                        const audio = document.getElementById('audio');
+                        if (audio) audio.pause();
+                        showNotification('音乐播放器已关闭', 'info');
+                    }
+                    hideModal(DOMElements.advancedModal.modal);
+                });
+            }
         }
     const annToggleBtn = document.getElementById('ann-toggle-btn');
     const annFormWrapper = document.getElementById('ann-form-wrapper');

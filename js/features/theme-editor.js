@@ -115,8 +115,8 @@ function applyAvatarShapeToDOM(type, shape) {
             '--send-btn-icon-color':'发送按钮 图标色',
             '--favorite-color':    '收藏星标颜色',
             '--timestamp-color':   '时间戳颜色',
-            '--questionnaire-user-choice': '【互动问答】你的选择颜色',
-            '--questionnaire-partner-choice': '【互动问答】对方选择颜色',
+            '--questionnaire-user-choice': '【心意相通】你的选择颜色',
+            '--questionnaire-partner-choice': '【心意相通】对方选择颜色',
         };
 
         const themeExtraMappings = {
@@ -321,7 +321,7 @@ function initThemeEditor() {
                 { label: '💬 对方气泡',  vars: ['--message-received-bg','--message-received-text'] },
                 { label: '🔧 工具栏按钮', vars: ['--toolbar-btn-bg','--toolbar-btn-color'] },
                 { label: '📤 发送按钮',  vars: ['--send-btn-bg','--send-btn-icon-color'] },
-                { label: '📝 互动问答',  vars: ['--questionnaire-user-choice','--questionnaire-partner-choice'] },
+                { label: '📝 心意相通',  vars: ['--questionnaire-user-choice','--questionnaire-partner-choice'] },
                 { label: '⭐ 其他',       vars: ['--favorite-color'] },
             ];
 

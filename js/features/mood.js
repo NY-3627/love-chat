@@ -231,11 +231,23 @@ const CUSTOM_MOOD_COLORS = ['#FFD93D','#FF6B6B','#6BCB77','#4D96FF','#8D9EFF','#
 
 async function initMoodData() {
     const savedMoods = await localforage.getItem(getStorageKey('moodCalendar'));
-    if (savedMoods) { moodData = savedMoods; }
+    if (savedMoods && typeof savedMoods === 'object' && !Array.isArray(savedMoods)) {
+        moodData = savedMoods;
+    } else {
+        moodData = {};
+    }
     const savedCustomMoods = await localforage.getItem(getStorageKey('customMoodOptions'));
-    if (savedCustomMoods) { customMoodOptions = savedCustomMoods; }
+    if (Array.isArray(savedCustomMoods)) {
+        customMoodOptions = savedCustomMoods;
+    } else {
+        customMoodOptions = [];
+    }
     const savedTrash = await localforage.getItem(getStorageKey('moodTrash'));
-    if (savedTrash && Array.isArray(savedTrash)) { moodTrash = savedTrash; }
+    if (Array.isArray(savedTrash)) {
+        moodTrash = savedTrash;
+    } else {
+        moodTrash = [];
+    }
     window.moodData = moodData;
     window.moodTrash = moodTrash;
     checkPartnerDailyMood();
@@ -794,24 +806,38 @@ function _showMoodImportPicker(data) {
         try {
             if (selCal && hasCalendar) {
                 Object.keys(data.moodCalendar).forEach(dateStr => {
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+                    const dayData = data.moodCalendar[dateStr];
+                    if (!dayData || typeof dayData !== 'object' || Array.isArray(dayData)) return;
                     if (!moodData[dateStr]) moodData[dateStr] = {};
-                    if (data.moodCalendar[dateStr] && typeof data.moodCalendar[dateStr] === 'object') {
-                        Object.assign(moodData[dateStr], data.moodCalendar[dateStr]);
-                    }
+                    Object.assign(moodData[dateStr], dayData);
                 });
             }
 
             if (selCustom && hasCustom) {
                 const map = new Map();
                 (customMoodOptions || []).forEach(m => map.set(m.key, m));
-                data.customMoodOptions.forEach(m => map.set(m.key, m));
+                data.customMoodOptions.forEach(m => {
+                    if (m && m.key && m.label) {
+                        map.set(m.key, {
+                            key: String(m.key),
+                            label: String(m.label),
+                            kaomoji: m.kaomoji || '😊',
+                            color: m.color || '#FFD93D'
+                        });
+                    }
+                });
                 customMoodOptions = [...map.values()];
             }
 
             if (selTrash && hasTrash) {
                 const map = new Map();
                 (moodTrash || []).forEach(t => map.set(String(t.id), t));
-                data.moodTrash.forEach(t => map.set(String(t.id), t));
+                data.moodTrash.forEach(t => {
+                    if (t && t.id) {
+                        map.set(String(t.id), t);
+                    }
+                });
                 moodTrash = [...map.values()];
             }
 

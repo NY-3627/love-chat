@@ -6,6 +6,8 @@ let userAnswers = [];
 let partnerAnswers = [];
 let questionnaireStartTime = 0;
 let questionnaireRevealTimer = null;
+let questionnaireInviting = false;
+let questionnaireInvitingTimer = null;
 
 async function loadQuestionnaireData() {
     const saved = await localforage.getItem(getStorageKey('questionnaires'));
@@ -62,19 +64,16 @@ function renderQuestionnaireList() {
     list.innerHTML = questionnaires.map(q => {
         const date = new Date(q.createdAt).toLocaleDateString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
         return `
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; 
-                border:1px solid var(--border-color); background:var(--primary-bg); 
+            <div style="border:1px solid var(--border-color); background:var(--primary-bg); 
                 border-radius:14px; padding:14px; margin-bottom:10px;">
-                <div style="flex:1; min-width:0;">
-                    <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:4px;">${_esc(q.title)}</div>
-                    <div style="font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${q.description ? _esc(q.description) : '暂无描述'}
-                    </div>
-                    <div style="font-size:11px; color:var(--text-secondary); opacity:0.6; margin-top:3px;">
-                        ${q.questions.length} 个问题 · ${date}
-                    </div>
+                <div style="font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">${_esc(q.title)}</div>
+                <div style="font-size:12px; color:var(--text-secondary); margin-bottom:4px;">
+                    ${q.description ? _esc(q.description) : '暂无描述'}
                 </div>
-                <div style="display:flex; gap:6px; flex-shrink:0;">
+                <div style="font-size:11px; color:var(--text-secondary); opacity:0.6; margin-bottom:10px;">
+                    ${q.questions.length} 个问题 · ${date}
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     <button class="modal-btn modal-btn-secondary" onclick="editQuestionnaire(${q.id})" style="padding:6px 10px; font-size:11px;">
                         <i class="fas fa-edit"></i> 编辑
                     </button>
@@ -168,7 +167,13 @@ function addQuestionToEditor(question = null, index) {
                 style="flex:1; padding:6px 8px; border:1px solid var(--border-color); border-radius:8px; 
                        background:var(--secondary-bg); color:var(--text-primary); font-size:12px; outline:none;"
                 placeholder="输入问题内容"
-                oninput="updateQuestionText(${qId}, this.value)">
+                oninput="updateQuestionText(${qId}, this.value)"
+                data-qid="${qId}">
+            <button onclick="duplicateQuestion(this)" 
+                style="background:none; border:none; color:var(--accent-color); cursor:pointer; padding:0 6px;"
+                title="复制此问题">
+                <i class="fas fa-copy"></i>
+            </button>
             <button onclick="removeQuestionFromEditor(this)" 
                 style="background:none; border:none; color:var(--questionnaire-partner-choice); cursor:pointer; padding:0 6px;"
                 title="删除问题">
@@ -260,6 +265,59 @@ function removeQuestionFromEditor(btn) {
     });
 }
 
+function duplicateQuestion(btn) {
+    const currentItem = btn.closest('.question-item');
+    const currentInput = currentItem.querySelector('input[data-qid]');
+    const qText = currentInput ? currentInput.value.trim() : '';
+    const qId = currentInput ? parseInt(currentInput.dataset.qid) : Date.now();
+    
+    // 获取当前问题的所有选项
+    const options = [];
+    currentItem.querySelectorAll('.question-options input').forEach(input => {
+        const optText = input.value.trim();
+        if (optText) options.push(optText);
+    });
+    
+    if (options.length < 2) {
+        showNotification('复制问题需要至少2个选项', 'warning');
+        return;
+    }
+    
+    // 创建新问题数据
+    const newQuestion = {
+        id: Date.now(),
+        text: qText,
+        options: options
+    };
+    
+    // 获取当前问题在容器中的索引
+    const currentIndex = parseInt(currentItem.dataset.index);
+    const newIndex = currentIndex + 1;
+    
+    // 创建新问题元素（临时插入到末尾）
+    const container = document.getElementById('question-list-container');
+    addQuestionToEditor(newQuestion, newIndex);
+    
+    // 将新创建的问题元素移动到当前问题之后
+    const newItem = container.lastElementChild;
+    container.removeChild(newItem);
+    
+    // 在当前问题之后插入
+    if (currentItem.nextSibling) {
+        container.insertBefore(newItem, currentItem.nextSibling);
+    } else {
+        container.appendChild(newItem);
+    }
+    
+    // 更新所有问题的索引和编号
+    container.querySelectorAll('.question-item').forEach((item, idx) => {
+        item.dataset.index = idx;
+        item.querySelector('span:first-child').textContent = `问题 ${idx + 1}`;
+    });
+    
+    showNotification('问题已复制', 'success');
+}
+
 function saveQuestionnaire() {
     const title = document.getElementById('questionnaire-title-input').value.trim();
     const desc = document.getElementById('questionnaire-desc-input').value.trim();
@@ -332,19 +390,82 @@ function deleteQuestionnaire(id) {
 }
 
 function playQuestionnaire(id) {
+    if (questionnaireInviting) {
+        showNotification('请稍候，对方正在查看...', 'warning');
+        return;
+    }
+    
     const q = questionnaires.find(item => item.id === id);
     if (!q) return;
     
-    currentPlayingQuestionnaire = q;
-    currentQuestionIndex = 0;
-    userAnswers = [];
-    partnerAnswers = [];
-    questionnaireStartTime = Date.now();
+    questionnaireInviting = true;
     
-    document.getElementById('questionnaire-play-title').textContent = q.title;
-    hideModal(document.getElementById('questionnaire-modal'));
-    showModal(document.getElementById('questionnaire-play-modal'));
-    renderCurrentQuestion();
+    const partnerName = (typeof settings !== 'undefined' && settings.partnerName) || '梦角';
+    
+    const listContent = document.getElementById('questionnaire-list');
+    
+    listContent.innerHTML = `
+        <div style="padding:40px 20px; text-align:center;">
+            <div style="width:64px; height:64px; border-radius:50%; background:rgba(var(--questionnaire-partner-choice-rgb), 0.1); 
+                        display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                <div style="width:28px; height:28px; border-radius:50%; background:var(--questionnaire-partner-choice); 
+                            display:flex; align-items:center; justify-content:center; color:#fff;">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+            <div style="font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">${_esc(partnerName)} 正在查看问卷...</div>
+            <div style="display:flex; justify-content:center; gap:4px;">
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--questionnaire-partner-choice); opacity:0.6; animation:bounce 1.4s infinite ease-in-out both;"></span>
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--questionnaire-partner-choice); opacity:0.6; animation:bounce 1.4s infinite ease-in-out both; animation-delay:0.16s;"></span>
+                <span style="width:6px; height:6px; border-radius:50%; background:var(--questionnaire-partner-choice); opacity:0.6; animation:bounce 1.4s infinite ease-in-out both; animation-delay:0.32s;"></span>
+            </div>
+            <style>
+                @keyframes bounce {
+                    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+                    40% { transform: scale(1); opacity: 1; }
+                }
+            </style>
+        </div>
+    `;
+    
+    const delayMin = 1500;
+    const delayMax = 2500;
+    const delay = delayMin + Math.random() * (delayMax - delayMin);
+    
+    questionnaireInvitingTimer = setTimeout(() => {
+        questionnaireInviting = false;
+        questionnaireInvitingTimer = null;
+        
+        if (Math.random() < 0.5) {
+            listContent.innerHTML = `
+                <div style="padding:40px 20px; text-align:center;">
+                    <div style="width:64px; height:64px; border-radius:50%; background:rgba(var(--questionnaire-partner-choice-rgb), 0.1); 
+                                display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
+                        <div style="width:28px; height:28px; border-radius:50%; background:var(--questionnaire-partner-choice); 
+                                    display:flex; align-items:center; justify-content:center; color:#fff;">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                    <div style="font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:6px;">${_esc(partnerName)} 拒绝了你的问卷邀请</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-bottom:20px;">也许下次会接受呢~</div>
+                    <button class="modal-btn modal-btn-primary" onclick="renderQuestionnaireList()" style="padding:8px 24px;">
+                        返回问卷列表
+                    </button>
+                </div>
+            `;
+        } else {
+            currentPlayingQuestionnaire = q;
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            partnerAnswers = [];
+            questionnaireStartTime = Date.now();
+            
+            document.getElementById('questionnaire-play-title').textContent = q.title;
+            hideModal(document.getElementById('questionnaire-modal'));
+            showModal(document.getElementById('questionnaire-play-modal'));
+            renderCurrentQuestion();
+        }
+    }, delay);
 }
 
 function renderCurrentQuestion() {
@@ -630,6 +751,11 @@ function initQuestionnaireListeners() {
     const closeBtn = document.getElementById('close-questionnaire');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
+            if (questionnaireInvitingTimer) {
+                clearTimeout(questionnaireInvitingTimer);
+                questionnaireInvitingTimer = null;
+            }
+            questionnaireInviting = false;
             hideModal(document.getElementById('questionnaire-modal'));
         });
     }
